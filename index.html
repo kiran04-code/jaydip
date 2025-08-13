@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASAR - Digital Grievance Redressal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      margin: 0;
+    }
+    button {
+      margin-left: 10px;
+      padding: 8px 14px;
+      background-color: #2d87f0;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #256ad4;
+    }
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    .issue-item {
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React & Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function CitizenDashboard() {
+      const [issues, setIssues] = useState(() => {
+        const saved = localStorage.getItem('issues');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      const [form, setForm] = useState({
+        category: '',
+        description: '',
+        photo: '',
+        location: ''
+      });
+
+      const saveIssues = (data) => {
+        localStorage.setItem('issues', JSON.stringify(data));
+        setIssues(data);
+      };
+
+      const getLocation = () => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const coords = `${pos.coords.latitude}, ${pos.coords.longitude}`;
+              setForm({ ...form, location: coords });
+            },
+            () => alert('Unable to fetch location')
+          );
+        } else {
+          alert('Geolocation not supported');
+        }
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.category || !form.location) {
+          alert('Please select category and enable location.');
+          return;
+        }
+        const newIssue = { ...form, status: 'Pending' };
+        const updatedIssues = [newIssue, ...issues];
+        saveIssues(updatedIssues);
+        setForm({ category: '', description: '', photo: '', location: '' });
+      };
+
+      return (
+        <div>
+          <h2>Report an Issue</h2>
+          <form onSubmit={handleSubmit} className="form">
+            <label>
+              Category:
+              <select
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+              >
+                <option value="">Select</option>
+                <option value="Garbage Overflow">Garbage Overflow</option>
+                <option value="Drainage">Drainage Issue</option>
+                <option value="Pothole">Pothole</option>
+                <option value="Unauthorized Construction">Unauthorized Construction</option>
+              </select>
+            </label>
+
+            <label>
+              Description:
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </label>
+
+            <label>
+              Upload Photo:
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setForm({ ...form, photo: e.target.files[0].name })}
+              />
+            </label>
+
+            <button type="button" onClick={getLocation}>Get Location</button>
+            {form.location && <p>Location: {form.location}</p>}
+
+            <button type="submit">Submit</button>
+          </form>
+
+          <h3>Your Reported Issues</h3>
+          <ul>
+            {issues.map((issue, i) => (
+              <li key={i} className="issue-item">
+                <strong>{issue.category}</strong> - {issue.description} <br />
+                Location: {issue.location} <br />
+                Status: {issue.status}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    function AdminDashboard() {
+      const [issues, setIssues] = useState([]);
+
+      useEffect(() => {
+        const saved = localStorage.getItem('issues');
+        if (saved) setIssues(JSON.parse(saved));
+      }, []);
+
+      const updateStatus = (index, newStatus) => {
+        const updatedIssues = [...issues];
+        updatedIssues[index].status = newStatus;
+        localStorage.setItem('issues', JSON.stringify(updatedIssues));
+        setIssues(updatedIssues);
+      };
+
+      return (
+        <div>
+          <h2>Admin Dashboard</h2>
+          {issues.length === 0 ? (
+            <p>No issues reported yet.</p>
+          ) : (
+            <ul>
+              {issues.map((issue, i) => (
+                <li key={i} className="issue-item">
+                  <strong>{issue.category}</strong> - {issue.description} <br />
+                  Location: {issue.location} <br />
+                  Status: {issue.status} <br />
+                  <button onClick={() => updateStatus(i, 'In Progress')}>In Progress</button>
+                  <button onClick={() => updateStatus(i, 'Resolved')}>Resolved</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [view, setView] = useState('citizen');
+      return (
+        <div>
+          <header>
+            <h1>ASAR - Digital Grievance Redressal</h1>
+            <div>
+              <button onClick={() => setView('citizen')}>Citizen View</button>
+              <button onClick={() => setView('admin')}>Admin Dashboard</button>
+            </div>
+          </header>
+          {view === 'citizen' ? <CitizenDashboard /> : <AdminDashboard />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
